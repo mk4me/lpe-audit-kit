@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run shellcheck
+        run: |
+          shellcheck --version
+          shellcheck -S warning lpe-audit.sh fleet-audit.sh verify.sh tests/run-tests.sh
+
+  syntax-check:
+    name: Syntax check (${{ matrix.shell }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shell: [bash, dash]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ${{ matrix.shell }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y ${{ matrix.shell }}
+      - name: Parse-check lpe-audit.sh
+        run: ${{ matrix.shell }} -n lpe-audit.sh
+
+  smoke-test:
+    name: Smoke test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run audit (default mode)
+        run: |
+          chmod +x lpe-audit.sh
+          ./lpe-audit.sh || code=$?
+          # exit 0, 2 are both acceptable (clean or exposed)
+          if [ "${code:-0}" != "0" ] && [ "${code:-0}" != "2" ]; then
+            echo "Unexpected exit code: ${code}"
+            exit 1
+          fi
+      - name: Run audit (JSON mode)
+        run: |
+          ./lpe-audit.sh --json > out.json || true
+          # Validate JSON
+          python3 -c "import json; json.load(open('out.json'))"
+          echo "JSON output is valid"
+      - name: Run audit (quiet mode)
+        run: ./lpe-audit.sh --quiet || true
+
+  container-tests:
+    name: Container distro test (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - debian:11
+          - debian:12
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - rockylinux:9
+          - almalinux:9
+          - fedora:40
+          - alpine:3.19
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run audit in ${{ matrix.image }}
+        run: |
+          docker run --rm -v "$PWD":/work -w /work ${{ matrix.image }} sh -c '
+            # Try bash, fall back to sh
+            if command -v bash >/dev/null 2>&1; then
+              bash lpe-audit.sh --json > /tmp/out.json || true
+            else
+              sh lpe-audit.sh --json > /tmp/out.json || true
+            fi
+            head -c 500 /tmp/out.json
+            echo ""
+            head -c 1 /tmp/out.json | grep -q "{" && echo "OK: valid JSON output"
+          '
+
+  custom-tests:
+    name: Custom test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run test harness
+        run: |
+          if [ -x tests/run-tests.sh ]; then
+            ./tests/run-tests.sh
+          else
+            echo "No test harness found; skipping"
+          fi

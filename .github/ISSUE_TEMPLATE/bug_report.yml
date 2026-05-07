@@ -1,0 +1,50 @@
+name: Bug Report
+description: Report a problem with the audit script
+labels: ["bug"]
+body:
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution
+      description: Output of `cat /etc/os-release | grep PRETTY_NAME`
+      placeholder: 'PRETTY_NAME="Ubuntu 24.04.1 LTS"'
+    validations:
+      required: true
+
+  - type: input
+    id: kernel
+    attributes:
+      label: Kernel version
+      description: Output of `uname -r`
+      placeholder: "6.8.0-49-generic"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: json-output
+    attributes:
+      label: JSON output
+      description: Run `./lpe-audit.sh --json` and paste the output here
+      render: json
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else relevant — container env, unusual kernel build, etc.

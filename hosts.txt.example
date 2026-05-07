@@ -1,0 +1,25 @@
+# LPE Fleet Audit - hosts file
+# ============================
+# Format (one host per line):
+#   user@host           - explicit user
+#   host                - uses default user (-u flag or current $USER)
+#   host:port           - non-standard SSH port
+#   user@host:port      - both
+#
+# Lines starting with '#' and blank lines are ignored.
+#
+# Examples (uncomment and edit for your fleet):
+
+# admin@web-01.example.com
+# admin@web-02.example.com
+# admin@db-01.example.com:2222
+# root@bastion.example.com
+# 10.0.1.50
+# 10.0.1.51
+# 10.0.1.52
+
+# For Kubernetes nodes with shared key:
+#   ./fleet-audit.sh -i hosts.txt -u ubuntu -k ~/.ssh/cluster_key.pem --sudo
+
+# For mixed environment:
+#   ./fleet-audit.sh -i hosts.txt -c 16 --sudo

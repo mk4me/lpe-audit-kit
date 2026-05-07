@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability in this auditor
+    url: https://github.com/mk4me/lpe-audit-kit/security/advisories/new
+    about: Please report security issues privately, not via public issues.
+  - name: Linux kernel vulnerabilities
+    url: https://www.kernel.org/doc/html/latest/process/security-bugs.html
+    about: Report kernel bugs to security@kernel.org, not here.
