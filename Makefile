@@ -23,6 +23,10 @@ lint:
 	@shellcheck -S warning lpe-audit.sh
 	@echo "Linting fleet-audit.sh..."
 	@shellcheck -S warning fleet-audit.sh
+	@echo "Linting remote-audit.sh..."
+	@shellcheck -S warning remote-audit.sh
+	@echo "Linting install.sh..."
+	@shellcheck -S warning install.sh
 	@echo "Linting verify.sh..."
 	@shellcheck -S warning verify.sh
 	@echo "Linting tests/run-tests.sh..."
@@ -33,11 +37,11 @@ check: lint test
 
 release: clean
 	@mkdir -p dist/$(KIT_NAME)
-	@cp lpe-audit.sh fleet-audit.sh verify.sh hosts.txt.example \
+	@cp lpe-audit.sh fleet-audit.sh remote-audit.sh install.sh verify.sh hosts.txt.example \
 	    README.md LICENSE NOTICE CHANGELOG.md SECURITY.md \
 	    dist/$(KIT_NAME)/
 	@cd dist/$(KIT_NAME) && \
-	    sha256sum lpe-audit.sh fleet-audit.sh verify.sh README.md hosts.txt.example > SHA256SUMS
+	    sha256sum lpe-audit.sh fleet-audit.sh remote-audit.sh install.sh verify.sh README.md hosts.txt.example > SHA256SUMS
 	@cd dist && tar czf $(KIT_NAME).tar.gz $(KIT_NAME)/
 	@cd dist && sha256sum $(KIT_NAME).tar.gz > $(KIT_NAME).tar.gz.sha256
 	@echo "Release tarball: dist/$(KIT_NAME).tar.gz"

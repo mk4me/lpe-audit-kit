@@ -16,7 +16,7 @@ jobs:
       - name: Run shellcheck
         run: |
           shellcheck --version
-          shellcheck -S warning lpe-audit.sh fleet-audit.sh verify.sh tests/run-tests.sh
+          shellcheck -S warning lpe-audit.sh fleet-audit.sh remote-audit.sh install.sh verify.sh tests/run-tests.sh
 
   syntax-check:
     name: Syntax check (${{ matrix.shell }})

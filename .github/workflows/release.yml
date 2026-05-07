@@ -24,11 +24,11 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
           STAGE="lpe-audit-kit-${VERSION}"
           mkdir -p "${STAGE}"
-          cp lpe-audit.sh fleet-audit.sh verify.sh hosts.txt.example \
+          cp lpe-audit.sh fleet-audit.sh remote-audit.sh install.sh verify.sh hosts.txt.example \
              README.md LICENSE NOTICE CHANGELOG.md SECURITY.md \
              "${STAGE}/"
           # Generate fresh checksums
-          (cd "${STAGE}" && sha256sum lpe-audit.sh fleet-audit.sh verify.sh README.md hosts.txt.example > SHA256SUMS)
+          (cd "${STAGE}" && sha256sum lpe-audit.sh fleet-audit.sh remote-audit.sh install.sh verify.sh README.md hosts.txt.example > SHA256SUMS)
           tar czf "${STAGE}.tar.gz" "${STAGE}/"
           sha256sum "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256"
           ls -la

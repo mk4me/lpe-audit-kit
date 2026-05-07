@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-08
+
+### Added
+- **No-install execution paths**: stream the audit script through `sh` or `ssh`
+  without writing anything to disk
+- `remote-audit.sh` — wrapper for SSH-based remote audit of a single host
+  - Supports `--sudo`, `--json`, `--quiet`, custom port and key
+  - `--remote-source` flag fetches script from GitHub on the fly
+- `install.sh` — verified install with SHA256 check against published checksum
+  - `--run` flag downloads, verifies, runs, and deletes
+  - Falls back gracefully between `curl`/`wget` and `sha256sum`/`shasum`
+- `docs/index.html` — landing page for GitHub Pages with all execution paths
+- README: new "Run without installing anything" section with three patterns
+
+### Changed
+- Release tarball now includes `remote-audit.sh` and `install.sh`
+- CI lints all five scripts (was three)
+
 ## [1.0.0] - 2026-05-07
 
 ### Added
@@ -31,5 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bilingual README (English + Polish)
 - Apache 2.0 license
 
-[Unreleased]: https://github.com/mk4me/lpe-audit-kit/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/mk4me/lpe-audit-kit/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/mk4me/lpe-audit-kit/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/mk4me/lpe-audit-kit/releases/tag/v1.0.0

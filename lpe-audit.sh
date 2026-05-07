@@ -33,7 +33,7 @@
 
 set -u
 
-VERSION="1.0"
+VERSION="1.1"
 LANG=C
 LC_ALL=C
 export LANG LC_ALL

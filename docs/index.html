@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>lpe-audit-kit · Linux LPE auditor</title>
+<meta name="description" content="Portable read-only audit toolkit for the Q1-Q2 2026 Linux page-cache write LPE vulnerability cluster (Copy Fail, Dirty Frag, CrackArmor)">
+<style>
+  :root {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #7d8590;
+    --accent: #2f81f7;
+    --code-bg: #161b22;
+    --border: #30363d;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem;
+  }
+  h1 {
+    font-size: 1.75rem;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  h1 a { color: var(--fg); text-decoration: none; }
+  h2 {
+    font-size: 1.15rem;
+    margin: 2rem 0 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  p.tagline {
+    color: var(--muted);
+    margin: 0 0 1.5rem;
+    font-size: 1rem;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.875rem 1rem;
+    overflow-x: auto;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre code { background: transparent; padding: 0; }
+  a { color: var(--accent); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.93rem;
+  }
+  th, td {
+    padding: 0.5rem 0.625rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--muted); font-weight: 500; }
+  .badge {
+    display: inline-block;
+    padding: 0.1em 0.5em;
+    border-radius: 4px;
+    font-size: 0.78em;
+    font-weight: 500;
+  }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+  .links {
+    margin: 1.25rem 0;
+    color: var(--muted);
+    font-size: 0.93rem;
+  }
+  .links a { margin-right: 1.25rem; }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+  .warn {
+    background: rgba(210,153,34,0.08);
+    border-left: 3px solid var(--yellow);
+    padding: 0.625rem 0.875rem;
+    margin: 1rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.93rem;
+  }
+</style>
+</head>
+<body>
+
+<h1><a href="https://github.com/mk4me/lpe-audit-kit">lpe-audit-kit</a></h1>
+<p class="tagline">Portable read-only auditor for the Q1–Q2 2026 Linux page-cache write LPE vulnerability cluster.</p>
+
+<div class="links">
+  <a href="https://github.com/mk4me/lpe-audit-kit">GitHub repo</a>
+  <a href="https://github.com/mk4me/lpe-audit-kit/releases/latest">Latest release</a>
+  <a href="https://github.com/mk4me/lpe-audit-kit/issues">Issues</a>
+  <a href="https://github.com/mk4me/lpe-audit-kit/blob/main/LICENSE">Apache 2.0</a>
+</div>
+
+<h2>Vulnerabilities covered</h2>
+<table>
+<thead><tr><th>Name</th><th>CVE</th><th>Patch</th></tr></thead>
+<tbody>
+<tr><td><strong>Copy Fail</strong></td><td><a href="https://www.cve.org/CVERecord?id=CVE-2026-31431">CVE-2026-31431</a></td><td><span class="badge badge-green">Patched</span></td></tr>
+<tr><td><strong>Dirty Frag #1</strong></td><td>xfrm-ESP page-cache write</td><td><span class="badge badge-red">No patch</span></td></tr>
+<tr><td><strong>Dirty Frag #2</strong></td><td>RxRPC page-cache write</td><td><span class="badge badge-red">No patch</span></td></tr>
+<tr><td><strong>CrackArmor</strong></td><td><a href="https://ubuntu.com/security/vulnerabilities/crackarmor">CVE-2026-23268..23411</a></td><td><span class="badge badge-green">Patched</span></td></tr>
+</tbody>
+</table>
+
+<h2>Run on this host (no install)</h2>
+
+<p>Stream the script through a shell — nothing is written to disk:</p>
+<pre><code>curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh | sh</code></pre>
+
+<p>With options:</p>
+<pre><code>curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh | sh -s -- --json
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh | sh -s -- --quiet</code></pre>
+
+<div class="warn">
+  <strong>Trust check:</strong> piping to <code>sh</code> is convenient but skips integrity verification.
+  For a verified install, use <code>curl ... /install.sh | sh</code> below — it downloads, checks SHA256
+  against the published checksum, and only then runs.
+</div>
+
+<h2>Verified install (recommended for production)</h2>
+
+<pre><code>curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/install.sh | sh -s -- --run</code></pre>
+
+<p>Or save the verified script for later:</p>
+<pre><code>curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/install.sh | sh
+./lpe-audit.sh</code></pre>
+
+<h2>Audit a remote host (no install on remote)</h2>
+
+<p>Stream the script through SSH — script runs from memory only:</p>
+<pre><code>curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh | ssh user@host 'bash -s'</code></pre>
+
+<p>With sudo on the remote (for full kernel module visibility):</p>
+<pre><code>curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh | ssh user@host 'sudo bash -s'</code></pre>
+
+<p>Or use the wrapper from the repo:</p>
+<pre><code>git clone https://github.com/mk4me/lpe-audit-kit.git
+cd lpe-audit-kit
+./remote-audit.sh --sudo --json admin@web-01</code></pre>
+
+<h2>Audit your whole fleet</h2>
+
+<pre><code>git clone https://github.com/mk4me/lpe-audit-kit.git
+cd lpe-audit-kit
+cp hosts.txt.example hosts.txt
+# edit hosts.txt — one host per line: user@host
+./fleet-audit.sh -i hosts.txt -c 16 --sudo</code></pre>
+
+<p>Output: per-host JSON, aggregated CSV matrix, and a summary report.</p>
+
+<h2>Status values</h2>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><span class="badge badge-red">EXPOSED</span></td><td>Exploitable now — immediate action</td></tr>
+<tr><td><span class="badge badge-yellow">LATENT</span></td><td>Module not loaded but autoloadable</td></tr>
+<tr><td><span class="badge badge-yellow">PARTIAL</span></td><td>Mitigation present but bypassable</td></tr>
+<tr><td><span class="badge badge-yellow">HARDENED</span></td><td>Module loaded, userns gate closed</td></tr>
+<tr><td><span class="badge badge-green">MITIGATED</span></td><td>Blacklisted + not loaded</td></tr>
+<tr><td><span class="badge badge-green">LIKELY_OK</span></td><td>No module evidence — verify kernel patch</td></tr>
+<tr><td><span class="badge badge-green">NOT_PRESENT</span></td><td>Module not in kernel build</td></tr>
+<tr><td><span class="badge badge-green">NOT_AFFECTED</span></td><td>Kernel/distro out of scope</td></tr>
+</tbody>
+</table>
+
+<h2>How it works</h2>
+
+<p>POSIX shell. Read-only. No external dependencies. Heuristic detection of module presence, blacklist files, userns posture, and AppArmor/SELinux state.</p>
+
+<p>Tested on Ubuntu 18.04+, Debian 10+, RHEL/CentOS 7+, AlmaLinux 8+, Rocky Linux 8+, Fedora 36+, openSUSE Leap 15+, Alpine 3.15+, Amazon Linux 2/2023.</p>
+
+<p>The script is heuristic by design — for definitive patch status, check your distro's CVE tracker (links printed at end of the report).</p>
+
+<footer>
+  © 2026 Marek Kulbacki · <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a>
+  · Defensive auditor — not an exploit kit ·
+  Vulnerability research credits: <a href="https://github.com/V4bel/dirtyfrag">V4bel</a>,
+  <a href="https://xint.io">Theori</a>,
+  <a href="https://www.qualys.com">Qualys</a>
+</footer>
+
+</body>
+</html>

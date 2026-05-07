@@ -25,7 +25,62 @@ page cache of any readable file, used to modify the in-memory copy of setuid
 binaries (`/usr/bin/su`, `/usr/bin/sudo`) at execution time. Deterministic,
 no race condition, same exploit works across distributions.
 
-## Quick start
+## Run without installing anything
+
+Three ways to audit a host without leaving any files behind.
+
+### Local host (current machine)
+
+Stream the script through a shell — script runs from memory, nothing on disk:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh | sh
+```
+
+With options (note the `-s --` to forward flags to the script, not to `sh`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh | sh -s -- --json
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh | sh -s -- --quiet
+```
+
+### Remote host (over SSH, no copy)
+
+The same script streamed through SSH stdin — nothing is written to the remote
+filesystem either:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh \
+    | ssh user@host 'bash -s'
+
+# With sudo for full kernel module visibility:
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh \
+    | ssh user@host 'sudo bash -s'
+
+# JSON output for downstream processing:
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh \
+    | ssh user@host 'bash -s -- --json' > host.json
+```
+
+### Verified install (recommended for production)
+
+`curl | sh` is convenient but skips integrity verification. For a verified
+download that checks SHA256 against the published checksum before running:
+
+```bash
+# Download, verify, and run (no file left behind)
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/install.sh | sh -s -- --run
+
+# Download, verify, and save for later
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/install.sh | sh
+./lpe-audit.sh
+```
+
+The `install.sh` wrapper fetches `SHA256SUMS` from the same repo, verifies the
+script matches the published checksum, and only then runs it. Use this when
+you need defense-in-depth against compromised mirrors or MITM.
+
+## Quick start (with local clone)
 
 ### Single host
 
@@ -42,6 +97,17 @@ git clone https://github.com/mk4me/lpe-audit-kit.git
 cd lpe-audit-kit
 ./lpe-audit.sh
 ```
+
+### Remote host (single)
+
+```bash
+git clone https://github.com/mk4me/lpe-audit-kit.git
+cd lpe-audit-kit
+./remote-audit.sh --sudo --json admin@host > audit.json
+```
+
+Or in one line without cloning anything (see *Run without installing anything*
+above).
 
 ### Multiple hosts (fleet)
 
@@ -230,11 +296,28 @@ podatności Linux page-cache write z Q1–Q2 2026.
 
 ### Szybki start
 
+**Bez instalacji** — tylko wykonanie:
+
+```bash
+# Lokalny host
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh | sh
+
+# Zdalny host przez SSH (nic nie zostaje)
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/lpe-audit.sh \
+    | ssh user@host 'sudo bash -s'
+
+# Z weryfikacją SHA256 (zalecane dla produkcji)
+curl -fsSL https://raw.githubusercontent.com/mk4me/lpe-audit-kit/main/install.sh | sh -s -- --run
+```
+
+**Z lokalnym klonem** (gdy masz dużo hostów):
+
 ```bash
 git clone https://github.com/mk4me/lpe-audit-kit.git
 cd lpe-audit-kit
-./lpe-audit.sh                  # pojedynczy host
-./fleet-audit.sh -i hosts.txt   # cała flota
+./lpe-audit.sh                        # pojedynczy host
+./remote-audit.sh --sudo admin@host   # zdalny host przez SSH
+./fleet-audit.sh -i hosts.txt         # cała flota
 ```
 
 ### Co sprawdza
