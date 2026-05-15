@@ -16,14 +16,26 @@ as suggestions, never executed.
 | Name | CVE | Component | Patch status |
 |---|---|---|---|
 | **Copy Fail** | [CVE-2026-31431](https://www.cve.org/CVERecord?id=CVE-2026-31431) | `algif_aead` / `authencesn` | Patched late April 2026 |
-| **Dirty Frag #1** | none (embargo broken) | `xfrm-ESP` page-cache write | **No upstream patch** |
-| **Dirty Frag #2** | none (embargo broken) | `RxRPC` page-cache write | **No upstream patch** |
+| **Dirty Frag #1** | [CVE-2026-43284](https://www.cve.org/CVERecord?id=CVE-2026-43284) | `xfrm-ESP` page-cache write | Patched 2026-05-08 |
+| **Dirty Frag #2** | [CVE-2026-43500](https://www.cve.org/CVERecord?id=CVE-2026-43500) | `RxRPC` page-cache write | CVE reserved, **NVD pending, no upstream patch** |
 | **CrackArmor** | [CVE-2026-23268..23411](https://ubuntu.com/security/vulnerabilities/crackarmor) | AppArmor confused deputy | Patched March 2026 |
+| **KeySign-Pwn** | pending | `ptrace_may_access` mm=NULL + `pidfd_getfd` | Mainline `31e62c2ebbfd` (2026-05-14); distro backports pending |
 
-All four share a common bug class: a 4-byte controlled write into the kernel
-page cache of any readable file, used to modify the in-memory copy of setuid
-binaries (`/usr/bin/su`, `/usr/bin/sudo`) at execution time. Deterministic,
+The first four share a common bug class: a 4-byte controlled write into the
+kernel page cache of any readable file, used to modify the in-memory copy of
+setuid binaries (`/usr/bin/su`, `/usr/bin/sudo`) at execution time.
+Deterministic,
 no race condition, same exploit works across distributions.
+
+**KeySign-Pwn is a different class** — info-disclosure, not execution. It
+abuses a window in `do_exit()` where `task->mm` is already NULL but file
+descriptors are still alive, letting a same-uid attacker steal fds via
+`pidfd_getfd(2)`. When the victim is a setuid binary that opened a root-owned
+file before dropping privileges (`ssh-keysign` → SSH host keys; `chage` →
+`/etc/shadow`), the result is credential leakage that trivially escalates
+to root via offline cracking or host-key impersonation. The setuid binaries
+are *vectors*, not the bug; the bug is in the kernel and removing the
+binaries does not fix it.
 
 ## Run without installing anything
 
@@ -158,6 +170,7 @@ Exit codes: `0` = no exposure, `2` = at least one `EXPOSED`, `3` = script error.
 | Dirty Frag #1 | kernel ≥4.10 + `esp4`/`esp6` modules + userns gating + AppArmor restrict |
 | Dirty Frag #2 | kernel ≥6.5 + `rxrpc` module |
 | CrackArmor | AppArmor enabled vs SELinux + sudo/sudo-rs detection |
+| KeySign-Pwn | kernel ≥5.6 (`pidfd_getfd`) + distro changelog grep for `31e62c2ebbfd` + `yama.ptrace_scope` posture |
 | Container context | `/proc/1/cgroup`, `/.dockerenv`, runtimes installed |
 | Userns posture | `/proc/sys/kernel/unprivileged_userns_clone`, `max_user_namespaces`, AppArmor restrict |
 
@@ -325,9 +338,10 @@ cd lpe-audit-kit
 Cztery podatności umożliwiające lokalnemu użytkownikowi bez uprawnień
 zdobycie roota na większości systemów Linux od 2017:
 - **Copy Fail** (CVE-2026-31431) — załatane
-- **Dirty Frag #1** (xfrm-ESP) — **brak łatki**
-- **Dirty Frag #2** (RxRPC) — **brak łatki**
+- **Dirty Frag #1** (CVE-2026-43284, xfrm-ESP) — załatane 2026-05-08
+- **Dirty Frag #2** (CVE-2026-43500, RxRPC) — **CVE reserved, brak łatki upstream**
 - **CrackArmor** (CVE-2026-23268..23411) — załatane
+- **KeySign-Pwn** (info-disclosure, pending CVE) — łatka w mainline od 2026-05-14, dystrybucje **bez backportu**
 
 Audyt jest heurystyczny: sprawdza obecność modułów kernela, blacklisty,
 posture userns, kontekst kontenera. Autorytatywne źródło wciąż to tracker

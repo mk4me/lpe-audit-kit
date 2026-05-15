@@ -86,6 +86,7 @@ if [ $SKIP_LINUX_TESTS -eq 1 ]; then
     skip "default output mentions Copy Fail" "non-Linux host"
     skip "default output mentions Dirty Frag" "non-Linux host"
     skip "default output mentions CrackArmor" "non-Linux host"
+    skip "default output mentions KeySign-Pwn" "non-Linux host"
 else
     DEFAULT_OUT=$("$AUDIT" 2>&1)
     DEFAULT_RC=$?
@@ -94,6 +95,7 @@ else
     assert "default output mentions Copy Fail" 'echo "$DEFAULT_OUT" | grep -q "Copy Fail"'
     assert "default output mentions Dirty Frag" 'echo "$DEFAULT_OUT" | grep -q "Dirty Frag"'
     assert "default output mentions CrackArmor" 'echo "$DEFAULT_OUT" | grep -q "CrackArmor"'
+    assert "default output mentions KeySign-Pwn" 'echo "$DEFAULT_OUT" | grep -q "KeySign-Pwn"'
 fi
 
 # --- Test 5: JSON mode ---
@@ -110,6 +112,8 @@ if [ $SKIP_LINUX_TESTS -eq 1 ]; then
     skip "JSON contains dirtyfrag.xfrm.status" "non-Linux host"
     skip "JSON contains dirtyfrag.rxrpc.status" "non-Linux host"
     skip "JSON contains crackarmor.status" "non-Linux host"
+    skip "JSON contains keysign.status" "non-Linux host"
+    skip "JSON schema bumped to 1.2" "non-Linux host"
 else
     JSON_OUT=$("$AUDIT" --json 2>/dev/null)
     assert "JSON output is non-empty" '[ -n "$JSON_OUT" ]'
@@ -128,6 +132,8 @@ else
     assert "JSON contains dirtyfrag.xfrm.status" 'echo "$JSON_OUT" | grep -q "dirtyfrag.xfrm.status"'
     assert "JSON contains dirtyfrag.rxrpc.status" 'echo "$JSON_OUT" | grep -q "dirtyfrag.rxrpc.status"'
     assert "JSON contains crackarmor.status" 'echo "$JSON_OUT" | grep -q "crackarmor.status"'
+    assert "JSON contains keysign.status" 'echo "$JSON_OUT" | grep -q "keysign.status"'
+    assert "JSON schema bumped to 1.2" 'echo "$JSON_OUT" | grep -q "lpe-audit/1.2"'
 fi
 
 # --- Test 6: quiet mode ---

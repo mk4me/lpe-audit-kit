@@ -5,9 +5,18 @@
 # Audits exposure to the Q1-Q2 2026 page-cache write LPE cluster:
 #
 #   Copy Fail        CVE-2026-31431            (algif_aead, patched)
-#   Dirty Frag #1    no-CVE - embargo broken   (xfrm-ESP, NO PATCH)
-#   Dirty Frag #2    no-CVE - embargo broken   (RxRPC, NO PATCH)
+#   Dirty Frag #1    CVE-2026-43284            (xfrm-ESP, patched 2026-05-08)
+#   Dirty Frag #2    CVE-2026-43500            (RxRPC, reserved - NVD pending)
 #   CrackArmor       CVE-2026-23268..23411     (AppArmor, patched)
+#   KeySign-Pwn      pending CVE               (ptrace_may_access mm=NULL
+#                                               + pidfd_getfd, fix in
+#                                               mainline commit 31e62c2ebbfd
+#                                               2026-05-14, distro backports
+#                                               pending)
+#
+# Note: KeySign-Pwn is an info-disclosure primitive (steal root-owned fd
+# from setuid binaries during exit). It is not LPE in the execution sense,
+# but it leaks /etc/shadow and SSH host keys -> trivial path to root.
 #
 # Read-only. Does not modify system state. Mitigation commands are
 # printed as suggestions, never executed.
@@ -29,11 +38,12 @@
 # License: public domain. No warranty. Use at your own risk.
 # Source:  https://github.com/V4bel/dirtyfrag (Dirty Frag origin)
 #          https://xint.io/blog/copy-fail-linux-distributions (Copy Fail)
-#          https://blog.qualys.com (CrackArmor)
+#          https://blog.qualys.com (CrackArmor, KeySign-Pwn)
+#          https://github.com/0xdeadbeefnetwork/ssh-keysign-pwn (KeySign-Pwn PoC)
 
 set -u
 
-VERSION="1.1"
+VERSION="1.2"
 LANG=C
 LC_ALL=C
 export LANG LC_ALL
@@ -231,7 +241,7 @@ if [ -r /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
 fi
 
 # ---------- 1. Copy Fail (CVE-2026-31431) ----------
-header "[1/4] Copy Fail  (CVE-2026-31431, algif_aead)"
+header "[1/5] Copy Fail  (CVE-2026-31431, algif_aead)"
 
 CF_STATUS="UNKNOWN"; CF_DETAIL=""
 
@@ -269,7 +279,7 @@ fi
 record "copyfail.status" "$CF_STATUS" "$CF_DETAIL"
 
 # ---------- 2. Dirty Frag #1 - xfrm-ESP (no CVE) ----------
-header "[2/4] Dirty Frag #1  (xfrm-ESP page-cache write, NO PATCH)"
+header "[2/5] Dirty Frag #1  (xfrm-ESP page-cache write, NO PATCH)"
 
 DF1_STATUS="UNKNOWN"; DF1_DETAIL=""
 
@@ -321,7 +331,7 @@ fi
 record "dirtyfrag.xfrm.status" "$DF1_STATUS" "$DF1_DETAIL"
 
 # ---------- 3. Dirty Frag #2 - RxRPC (no CVE) ----------
-header "[3/4] Dirty Frag #2  (RxRPC page-cache write, NO PATCH)"
+header "[3/5] Dirty Frag #2  (RxRPC page-cache write, NO PATCH)"
 
 DF2_STATUS="UNKNOWN"; DF2_DETAIL=""
 
@@ -353,7 +363,7 @@ fi
 record "dirtyfrag.rxrpc.status" "$DF2_STATUS" "$DF2_DETAIL"
 
 # ---------- 4. CrackArmor ----------
-header "[4/4] CrackArmor  (CVE-2026-23268..23411, AppArmor)"
+header "[4/5] CrackArmor  (CVE-2026-23268..23411, AppArmor)"
 
 CA_STATUS="UNKNOWN"; CA_DETAIL=""
 
@@ -408,7 +418,124 @@ fi
 
 record "crackarmor.status" "$CA_STATUS" "$CA_DETAIL"
 
-# ---------- 5. Container/isolation context ----------
+# ---------- 5. KeySign-Pwn (mainline commit 31e62c2ebbfd, 2026-05-14) ----------
+header "[5/5] KeySign-Pwn  (ptrace_may_access mm=NULL + pidfd_getfd)"
+
+# Mechanism: __ptrace_may_access() skips the dumpable check when
+# task->mm == NULL. do_exit() calls exit_mm() before exit_files(),
+# so during that window a uid-matching caller can pidfd_getfd() the
+# fds of an exiting setuid binary that already opened a root-owned
+# file (e.g. ssh-keysign opening /etc/ssh/ssh_host_*_key before
+# permanently_set_uid(); chage opening /etc/shadow before setreuid()).
+#
+# Fix: kernel mainline commit 31e62c2ebbfd (2026-05-14). As of 1.2.0
+# release, no stable distro has backported. This is a kernel bug;
+# ssh-keysign/chage are vectors, not the vulnerability.
+
+KS_STATUS="UNKNOWN"; KS_DETAIL=""
+
+# pidfd_getfd(2) syscall was added in kernel 5.6 (2020-03).
+# Pre-5.6 kernels have a different attack surface (process_vm_readv on
+# exiting process) which is out of scope here.
+if ver_ge "$KERNEL_BASE" "5.6"; then
+
+    # Try to verify fix via distro changelog (authoritative).
+    # We grep for the upstream commit hash; only present if backport landed.
+    PATCH_BACKPORTED=0
+    PATCH_CHECK_METHOD="none"
+
+    if command -v rpm >/dev/null 2>&1; then
+        if rpm -q --changelog "kernel-$KERNEL" 2>/dev/null | \
+           grep -qF "31e62c2ebbfd" 2>/dev/null; then
+            PATCH_BACKPORTED=1
+            PATCH_CHECK_METHOD="rpm-changelog"
+        elif rpm -q --changelog "kernel" 2>/dev/null | \
+             grep -qF "31e62c2ebbfd" 2>/dev/null; then
+            PATCH_BACKPORTED=1
+            PATCH_CHECK_METHOD="rpm-changelog"
+        fi
+    fi
+
+    if [ $PATCH_BACKPORTED -eq 0 ] && command -v dpkg >/dev/null 2>&1; then
+        # Debian/Ubuntu: zcat the per-package changelog
+        for cl in /usr/share/doc/linux-image-"$KERNEL"/changelog.Debian.gz \
+                  /usr/share/doc/linux-image-"$KERNEL"/changelog.gz; do
+            if [ -r "$cl" ]; then
+                if zcat "$cl" 2>/dev/null | grep -qF "31e62c2ebbfd"; then
+                    PATCH_BACKPORTED=1
+                    PATCH_CHECK_METHOD="dpkg-changelog"
+                    break
+                fi
+            fi
+        done
+    fi
+
+    # Ptrace scope - partial mitigation surface.
+    # 0 = classic ptrace (any process of same uid)
+    # 1 = restricted (only child) - still vulnerable, uid match suffices via pidfd
+    # 2 = admin-only (CAP_SYS_PTRACE) - mitigates for unprivileged
+    # 3 = no ptrace at all - kernel-level block
+    PTRACE_SCOPE="unknown"
+    if [ -r /proc/sys/kernel/yama/ptrace_scope ]; then
+        PTRACE_SCOPE=$(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo unknown)
+    fi
+
+    # Setuid vector inventory (informational only - does NOT affect severity).
+    KS_VECTORS=""
+    for v in /usr/lib/openssh/ssh-keysign \
+             /usr/libexec/openssh/ssh-keysign \
+             /usr/lib/ssh/ssh-keysign \
+             /usr/bin/chage \
+             /usr/sbin/chage; do
+        if [ -u "$v" ] 2>/dev/null; then
+            KS_VECTORS="$KS_VECTORS $(basename "$v")"
+        fi
+    done
+    KS_VECTORS=$(echo "$KS_VECTORS" | sed 's/^ //; s/  */,/g')
+    [ -z "$KS_VECTORS" ] && KS_VECTORS="none-found"
+
+    if [ $PATCH_BACKPORTED -eq 1 ]; then
+        KS_STATUS="PATCHED"
+        KS_DETAIL="upstream commit 31e62c2ebbfd present in $PATCH_CHECK_METHOD; vectors=$KS_VECTORS"
+        ok "KeySign-Pwn: distro changelog confirms fix (commit 31e62c2ebbfd)"
+    else
+        # No backport found. Kernel is in vulnerable range. Grade by ptrace_scope.
+        case "$PTRACE_SCOPE" in
+            3)
+                KS_STATUS="HARDENED"
+                KS_DETAIL="kernel pre-31e62c2ebbfd but yama.ptrace_scope=3 (ptrace fully disabled); vectors=$KS_VECTORS"
+                warn "KeySign-Pwn: kernel unpatched but ptrace_scope=3 blocks the primitive"
+                ;;
+            2)
+                KS_STATUS="PARTIAL"
+                KS_DETAIL="kernel pre-31e62c2ebbfd; yama.ptrace_scope=2 mitigates for unprivileged; CAP_SYS_PTRACE holders still affected; vectors=$KS_VECTORS"
+                warn "KeySign-Pwn: ptrace_scope=2 - unprivileged users blocked, root/CAP_SYS_PTRACE still vulnerable"
+                ;;
+            0|1)
+                KS_STATUS="EXPOSED"
+                KS_DETAIL="kernel pre-31e62c2ebbfd; yama.ptrace_scope=$PTRACE_SCOPE; any local user can race exit + pidfd_getfd; vectors=$KS_VECTORS"
+                vuln "KeySign-Pwn: kernel unpatched + ptrace_scope permissive - any shell user can leak /etc/shadow / SSH host keys"
+                ;;
+            *)
+                KS_STATUS="EXPOSED"
+                KS_DETAIL="kernel pre-31e62c2ebbfd; yama.ptrace_scope unreadable or absent; vectors=$KS_VECTORS"
+                vuln "KeySign-Pwn: kernel unpatched, ptrace_scope state unknown - assume exposed"
+                ;;
+        esac
+    fi
+
+    record "keysign.ptrace_scope" "INFO" "$PTRACE_SCOPE"
+    record "keysign.vectors"      "INFO" "$KS_VECTORS"
+    record "keysign.patch_check"  "INFO" "$PATCH_CHECK_METHOD"
+else
+    KS_STATUS="NOT_AFFECTED"
+    KS_DETAIL="kernel $KERNEL_BASE predates pidfd_getfd (added in 5.6)"
+    ok "KeySign-Pwn: kernel pre-5.6, pidfd_getfd not available"
+fi
+
+record "keysign.status" "$KS_STATUS" "$KS_DETAIL"
+
+# ---------- 6. Container/isolation context ----------
 header "Container & isolation context"
 
 IN_CONTAINER=0
@@ -451,7 +578,7 @@ fi
 info "userns posture: $USERNS_DETAIL"
 record "userns.posture" "INFO" "$USERNS_DETAIL"
 
-# ---------- 6. Optional: distro CVE tracker check ----------
+# ---------- 7. Optional: distro CVE tracker check ----------
 if [ $CHECK_PATCH -eq 1 ]; then
     header "Distro CVE tracker check (Copy Fail / CrackArmor)"
     if ! command -v curl >/dev/null 2>&1; then
@@ -484,7 +611,7 @@ fi
 # ---------- JSON output ----------
 if [ $JSON_MODE -eq 1 ]; then
     printf '{\n'
-    printf '  "schema": "lpe-audit/1.0",\n'
+    printf '  "schema": "lpe-audit/1.2",\n'
     printf '  "timestamp": "%s",\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date)"
     printf '  "host": "%s",\n' "$HOSTNAME"
     printf '  "findings": {\n'
@@ -521,9 +648,10 @@ print_row() {
 
 [ $QUIET_MODE -eq 0 ] && echo
 print_row "Copy Fail (CVE-2026-31431)"      "$CF_STATUS"  "$CF_DETAIL"
-print_row "Dirty Frag #1 (xfrm-ESP)"        "$DF1_STATUS" "$DF1_DETAIL"
-print_row "Dirty Frag #2 (RxRPC)"           "$DF2_STATUS" "$DF2_DETAIL"
+print_row "Dirty Frag #1 (CVE-2026-43284)"  "$DF1_STATUS" "$DF1_DETAIL"
+print_row "Dirty Frag #2 (CVE-2026-43500)"  "$DF2_STATUS" "$DF2_DETAIL"
 print_row "CrackArmor (CVE-2026-23268+)"    "$CA_STATUS"  "$CA_DETAIL"
+print_row "KeySign-Pwn (pending CVE)"       "$KS_STATUS"  "$KS_DETAIL"
 [ $QUIET_MODE -eq 0 ] && echo
 
 # ---------- Recommended actions ----------
@@ -547,15 +675,22 @@ if [ $QUIET_MODE -eq 0 ]; then
         *EXPOSED*|*LATENT*|*PARTIAL*|*HARDENED*)
             NEED_ACTION=1
             echo
-            echo "  ${BLD}Dirty Frag (NO UPSTREAM PATCH - embargo broken):${RST}"
-            echo "    Apply module blacklist (WARNING: disables IPsec and AFS/RxRPC):"
-            echo "    sudo tee /etc/modprobe.d/dirtyfrag.conf <<'EOF'"
-            echo "    install esp4 /bin/false"
-            echo "    install esp6 /bin/false"
+            echo "  ${BLD}Dirty Frag #1 (CVE-2026-43284, xfrm-ESP) - PATCHED 2026-05-08:${RST}"
+            echo "    1) Apply distro kernel update (mainline patch landed 2026-05-08)"
+            echo "    2) Interim if patch not yet available:"
+            echo "       sudo tee /etc/modprobe.d/dirtyfrag-esp.conf <<'EOF'"
+            echo "       install esp4 /bin/false"
+            echo "       install esp6 /bin/false"
+            echo "       EOF"
+            echo "       sudo rmmod esp4 esp6 2>/dev/null || true"
+            echo "       WARNING: disables IPsec VPN functionality"
+            echo
+            echo "  ${BLD}Dirty Frag #2 (CVE-2026-43500, RxRPC) - NO PATCH (CVE reserved, NVD pending):${RST}"
+            echo "    Apply module blacklist (disables AFS/RxRPC):"
+            echo "    sudo tee /etc/modprobe.d/dirtyfrag-rxrpc.conf <<'EOF'"
             echo "    install rxrpc /bin/false"
             echo "    EOF"
-            echo "    sudo rmmod esp4 esp6 rxrpc 2>/dev/null || true"
-            echo "    Track upstream patches in mainline Linux kernel stable tree"
+            echo "    sudo rmmod rxrpc 2>/dev/null || true"
             ;;
     esac
 
@@ -567,6 +702,22 @@ if [ $QUIET_MODE -eq 0 ]; then
         echo "    2) Update util-linux (su mitigation) and sudo packages"
         echo "    3) Consider migration to sudo-rs (Ubuntu 25.10+ default)"
     fi
+
+    case "$KS_STATUS" in
+        EXPOSED|PARTIAL|UNKNOWN)
+            NEED_ACTION=1
+            echo
+            echo "  ${BLD}KeySign-Pwn (mainline commit 31e62c2ebbfd, 2026-05-14):${RST}"
+            echo "    1) Apply kernel update once your distro backports the fix"
+            echo "       (no stable distro had it at v1.2.0 release time)"
+            echo "    2) Interim mitigation - tighten ptrace_scope:"
+            echo "       sudo sysctl -w kernel.yama.ptrace_scope=2"
+            echo "       (blocks unprivileged callers; persist via /etc/sysctl.d/)"
+            echo "    3) DO NOT remove ssh-keysign / chage - they are vectors,"
+            echo "       not the bug. The vulnerability is in the kernel."
+            echo "    4) Track upstream: torvalds/linux commit 31e62c2ebbfd"
+            ;;
+    esac
 
     if [ $IN_CONTAINER -eq 1 ] || [ -n "$RUNTIMES" ]; then
         echo
@@ -598,7 +749,7 @@ fi
 
 # ---------- Exit code ----------
 EXIT_CODE=0
-case "$CF_STATUS$DF1_STATUS$DF2_STATUS$CA_STATUS" in
+case "$CF_STATUS$DF1_STATUS$DF2_STATUS$CA_STATUS$KS_STATUS" in
     *EXPOSED*) EXIT_CODE=2 ;;
 esac
 exit $EXIT_CODE

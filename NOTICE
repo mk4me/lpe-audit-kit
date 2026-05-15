@@ -7,6 +7,10 @@ Vulnerability research credits:
 - Dirty Frag: Hyunwoo Kim (@v4bel) - https://github.com/V4bel/dirtyfrag
 - Copy Fail: Theori / Xint - https://xint.io/blog/copy-fail-linux-distributions
 - CrackArmor: Qualys Threat Research Unit
+- KeySign-Pwn: Qualys (disclosure), 0xdeadbeefnetwork (public PoC,
+  https://github.com/0xdeadbeefnetwork/ssh-keysign-pwn),
+  Jann Horn (Project Zero, 2020 pre-flagging of the FD-theft shape:
+  https://lore.kernel.org/all/20201016230915.1972840-1-jannh@google.com/)
 - Dirty Pipe (predecessor): Max Kellermann
 
 This tool is a heuristic auditor and does not embed any exploit code.
